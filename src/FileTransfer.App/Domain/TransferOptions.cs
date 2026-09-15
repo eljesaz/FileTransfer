@@ -10,6 +10,8 @@
         /// <summary>
         /// The public contructor for the <see cref="TransferOptions"/>.
         /// </summary>
+        /// <param name="chunkSizeBytes">The max bytes a chunk can contain.</param>
+        /// <param name="maxRetries">The maximum number of retries per chunk.</param>
         public TransferOptions(int chunkSizeBytes, int maxRetries) 
         { 
             if(chunkSizeBytes <= 0) throw new ArgumentOutOfRangeException(nameof(chunkSizeBytes));
@@ -23,7 +25,7 @@
         public int ChunkSizeBytes { get; }
 
         /// <summary>
-        /// The max retries a chunk can try to transfer.
+        /// The maximum number of retries per chunk.
         /// </summary>
         public int MaxRetries { get; }
     }

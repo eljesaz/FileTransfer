@@ -10,6 +10,9 @@
         /// <summary>
         /// The public constructer for <see cref="FileChunk"/> model.
         /// </summary>
+        /// <param name="offset">The chunk position in the source file.</param>
+        /// <param name="length">The number of bytes in the chunk.</param>
+        /// <param name="md5hash">The MD5 checksum of the chunk.</param>
         public FileChunk(long offset, int length, string md5hash)
         {
             if (offset < 0) { throw new ArgumentOutOfRangeException(nameof(offset)); }
