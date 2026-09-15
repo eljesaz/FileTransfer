@@ -1,24 +1,20 @@
 ﻿namespace FileTransfer.App.Domain
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
 
+    /// <summary>
+    /// The public class for the <see cref="FileChunk"/> model.
+    /// </summary>
     public class FileChunk
     {
+        /// <summary>
+        /// The public constructer for <see cref="FileChunk"/> model.
+        /// </summary>
         public FileChunk(long offset, int length, string md5hash)
         {
-            if (offset < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
+            if (offset < 0) { throw new ArgumentOutOfRangeException(nameof(offset)); }
 
-            if (length <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(length));
-            }
+            if (length <= 0) { throw new ArgumentOutOfRangeException(nameof(length)); }
 
             if (string.IsNullOrWhiteSpace(md5hash))
             {
