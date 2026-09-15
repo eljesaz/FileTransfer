@@ -1,6 +1,7 @@
 ﻿namespace FileTransfer.App.Services
 {
     using System;
+    using System.IO;
 
     using FileTransfer.App.Domain;
 
@@ -23,5 +24,77 @@
             _transferOptions = transferOptions;
         }
 
+        /// <summary>
+        /// Transfers a file from the source path to the destination path.
+        /// </summary>
+        /// <param name="sourcePath">The path of the source file.</param>
+        /// <param name="destinationFileDirectory">The destination file directory.</param>
+        public void Transfer(string sourcePath, string destinationFileDirectory)
+        {
+            ValidateInputParameters(sourcePath, destinationFileDirectory);
+        }
+
+        #region "Private validation methods"        
+        /// <summary>
+        /// Validates that the input strings for the file destination and source are not null or empty.
+        /// </summary>
+        /// <param name="sourcePath"></param>
+        /// <param name="destinationFileDirectory"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        private void ValidateInputParameters(string sourcePath, string destinationFileDirectory)
+        {
+            if(string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException(nameof(sourcePath));
+
+            if (string.IsNullOrWhiteSpace(destinationFileDirectory)) throw new ArgumentNullException(nameof(destinationFileDirectory));
+
+            ValidateSourceFileExists(sourcePath);
+            ValidateDestinationDirectoryExists(destinationFileDirectory);
+            ValidateSourceAndDestinationAreNotSameFile(sourcePath, destinationFileDirectory);
+        }
+
+        /// <summary>
+        /// Validates that source and destination directories are not the same. Throws exception when they are.
+        /// </summary>
+        /// <param name="sourcePath"></param>
+        /// <param name="destinationFileDirectory"></param>
+        /// <exception cref="ArgumentException"></exception>
+        private void ValidateSourceAndDestinationAreNotSameFile(string sourcePath, string destinationFileDirectory)
+        {
+            var sourceFilePath = Path.GetFullPath(sourcePath);
+            var destinationFilePath = Path.GetFullPath(
+                Path.Combine(destinationFileDirectory, Path.GetFileName(sourcePath)));
+
+            if (string.Equals(
+                    sourceFilePath,
+                    destinationFilePath,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException(
+                    "The destination file cannot be the same as the source file.");
+            }
+        }
+
+        /// <summary>
+        /// Validates whether the source file exists. Throws file not found exception if not.
+        /// </summary>
+        /// <param name="sourcePath"></param>
+        /// <exception cref="FileNotFoundException"></exception>
+        private void ValidateSourceFileExists(string sourcePath)
+        {
+            if (!File.Exists(sourcePath)) { throw new FileNotFoundException("The source file was not found", sourcePath); }
+        }
+
+        /// <summary>
+        /// Validates the destinationDirectory. If it doesn't exist, it creates it.
+        /// </summary>
+        /// <param name="destinationFileDirectory"></param>
+        private void ValidateDestinationDirectoryExists(string destinationFileDirectory)
+        { 
+            if (!Directory.Exists(destinationFileDirectory))
+            {
+                Directory.CreateDirectory(destinationFileDirectory);
+            }
+        }
+        #endregion
     }
 }
