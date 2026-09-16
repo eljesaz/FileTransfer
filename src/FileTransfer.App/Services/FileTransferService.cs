@@ -58,43 +58,90 @@
                     FileMode.Create,
                     FileAccess.ReadWrite))
                 {
-                    byte[] buffer = new byte[_transferOptions.ChunkSizeBytes];
+                    byte[] sourceBuffer =
+                        new byte[_transferOptions.ChunkSizeBytes];
+
+                    byte[] verificationBuffer =
+                        new byte[_transferOptions.ChunkSizeBytes];
+
                     int bytesRead;
 
                     while ((bytesRead = sourceStream.Read(
-                        buffer,
+                        sourceBuffer,
                         0,
-                        buffer.Length)) > 0)
+                        sourceBuffer.Length)) > 0)
                     {
+                        string sourceChunkHash =
+                            hashCalculator.ComputeChunkMd5(
+                                sourceBuffer,
+                                bytesRead);
+
                         destinationStream.Write(
-                            buffer,
+                            sourceBuffer,
                             0,
                             bytesRead);
 
-                        string md5HashedChunk =
+                        destinationStream.Flush();
+
+                        destinationStream.Seek(
+                            offset,
+                            SeekOrigin.Begin);
+
+                        int totalBytesRead = 0;
+
+                        while (totalBytesRead < bytesRead)
+                        {
+                            int readCount = destinationStream.Read(
+                                verificationBuffer,
+                                totalBytesRead,
+                                bytesRead - totalBytesRead);
+
+                            if (readCount == 0)
+                            {
+                                throw new EndOfStreamException(
+                                    "The destination ended before the chunk was fully read.");
+                            }
+
+                            totalBytesRead += readCount;
+                        }
+
+                        string destinationChunkHash =
                             hashCalculator.ComputeChunkMd5(
-                                buffer,
+                                verificationBuffer,
                                 bytesRead);
+
+                        if (!string.Equals(
+                                sourceChunkHash,
+                                destinationChunkHash,
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException(
+                                $"Chunk verification failed at offset {offset}.");
+                        }
 
                         chunks.Add(new FileChunk(
                             offset,
                             bytesRead,
-                            md5HashedChunk));
+                            sourceChunkHash));
 
                         offset += bytesRead;
+
+                        destinationStream.Seek(
+                            offset,
+                            SeekOrigin.Begin);
                     }
                 }
 
-                string hashedSource =
+                string sourceHash =
                     hashCalculator.ComputeFileSha256(sourcePath);
 
-                string hashedDestination =
+                string destinationHash =
                     hashCalculator.ComputeFileSha256(destinationFilePath);
 
                 return new TransferResult(
                     chunks,
-                    hashedSource,
-                    hashedDestination);
+                    sourceHash,
+                    destinationHash);
             }
 
         #region "Private validation methods"        
