@@ -18,7 +18,7 @@
         /// <param name="transferOptions">
         /// Configuration used to control the file transfer.
         /// </param>
-        public FileTransferService(TransferOptions transferOptions) 
+        public FileTransferService(TransferOptions transferOptions)
         {
             if (transferOptions == null) throw new ArgumentNullException(nameof(transferOptions));
             _transferOptions = transferOptions;
@@ -43,108 +43,195 @@
         private TransferResult ProcessTransfer(
         string sourcePath,
         string destinationFileDirectory)
+        {
+            string destinationFilePath = Path.Combine(
+                destinationFileDirectory,
+                Path.GetFileName(sourcePath));
+
+            List<FileChunk> chunks = new List<FileChunk>();
+            FileHashCalculator hashCalculator = new FileHashCalculator();
+            long offset = 0;
+
+            using (FileStream sourceStream = File.OpenRead(sourcePath))
+            using (FileStream destinationStream = new FileStream(
+                destinationFilePath,
+                FileMode.Create,
+                FileAccess.ReadWrite))
             {
-                string destinationFilePath = Path.Combine(
-                    destinationFileDirectory,
-                    Path.GetFileName(sourcePath));
+                byte[] sourceBuffer =
+                    new byte[_transferOptions.ChunkSizeBytes];
 
-                List<FileChunk> chunks = new List<FileChunk>();
-                FileHashCalculator hashCalculator = new FileHashCalculator();
-                long offset = 0;
+                byte[] verificationBuffer =
+                    new byte[_transferOptions.ChunkSizeBytes];
 
-                using (FileStream sourceStream = File.OpenRead(sourcePath))
-                using (FileStream destinationStream = new FileStream(
-                    destinationFilePath,
-                    FileMode.Create,
-                    FileAccess.ReadWrite))
+                int bytesRead;
+
+                while ((bytesRead = sourceStream.Read(
+                    sourceBuffer,
+                    0,
+                    sourceBuffer.Length)) > 0)
                 {
-                    byte[] sourceBuffer =
-                        new byte[_transferOptions.ChunkSizeBytes];
-
-                    byte[] verificationBuffer =
-                        new byte[_transferOptions.ChunkSizeBytes];
-
-                    int bytesRead;
-
-                    while ((bytesRead = sourceStream.Read(
-                        sourceBuffer,
-                        0,
-                        sourceBuffer.Length)) > 0)
-                    {
-                        string sourceChunkHash =
-                            hashCalculator.ComputeChunkMd5(
-                                sourceBuffer,
-                                bytesRead);
-
-                        destinationStream.Write(
+                    string sourceChunkHash =
+                        hashCalculator.ComputeChunkMd5(
                             sourceBuffer,
-                            0,
                             bytesRead);
 
-                        destinationStream.Flush();
+                    destinationStream.Write(
+                        sourceBuffer,
+                        0,
+                        bytesRead);
 
-                        destinationStream.Seek(
-                            offset,
-                            SeekOrigin.Begin);
+                    destinationStream.Flush();
 
-                        int totalBytesRead = 0;
+                    destinationStream.Seek(
+                        offset,
+                        SeekOrigin.Begin);
 
-                        while (totalBytesRead < bytesRead)
+                    int totalBytesRead = 0;
+
+                    while (totalBytesRead < bytesRead)
+                    {
+                        int readCount = destinationStream.Read(
+                            verificationBuffer,
+                            totalBytesRead,
+                            bytesRead - totalBytesRead);
+
+                        if (readCount == 0)
                         {
-                            int readCount = destinationStream.Read(
-                                verificationBuffer,
-                                totalBytesRead,
-                                bytesRead - totalBytesRead);
-
-                            if (readCount == 0)
-                            {
-                                throw new EndOfStreamException(
-                                    "The destination ended before the chunk was fully read.");
-                            }
-
-                            totalBytesRead += readCount;
+                            throw new EndOfStreamException(
+                                "The destination ended before the chunk was fully read.");
                         }
 
-                        string destinationChunkHash =
-                            hashCalculator.ComputeChunkMd5(
-                                verificationBuffer,
-                                bytesRead);
-
-                        if (!string.Equals(
-                                sourceChunkHash,
-                                destinationChunkHash,
-                                StringComparison.OrdinalIgnoreCase))
-                        {
-                            throw new InvalidDataException(
-                                $"Chunk verification failed at offset {offset}.");
-                        }
-
-                        chunks.Add(new FileChunk(
-                            offset,
-                            bytesRead,
-                            sourceChunkHash));
-
-                        offset += bytesRead;
-
-                        destinationStream.Seek(
-                            offset,
-                            SeekOrigin.Begin);
+                        totalBytesRead += readCount;
                     }
+
+                    string destinationChunkHash =
+                        hashCalculator.ComputeChunkMd5(
+                            verificationBuffer,
+                            bytesRead);
+
+                    if (!string.Equals(
+                            sourceChunkHash,
+                            destinationChunkHash,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        RetryChunk(destinationStream, sourceBuffer, verificationBuffer, bytesRead, offset, sourceChunkHash, hashCalculator);
+                    }
+
+                    chunks.Add(new FileChunk(
+                        offset,
+                        bytesRead,
+                        sourceChunkHash));
+
+                    offset += bytesRead;
+
+                    destinationStream.Seek(
+                        offset,
+                        SeekOrigin.Begin);
                 }
-
-                string sourceHash =
-                    hashCalculator.ComputeFileSha256(sourcePath);
-
-                string destinationHash =
-                    hashCalculator.ComputeFileSha256(destinationFilePath);
-
-                return new TransferResult(
-                    chunks,
-                    sourceHash,
-                    destinationHash);
             }
 
-        #region "Private validation methods"        
+            string sourceHash =
+                hashCalculator.ComputeFileSha256(sourcePath);
+
+            string destinationHash =
+                hashCalculator.ComputeFileSha256(destinationFilePath);
+
+            return new TransferResult(
+                chunks,
+                sourceHash,
+                destinationHash);
+        }
+
+        #region "Private validation methods"  
+
+        /// <summary>
+        /// Writes a chunk to the destination and retries it when MD5 verification fails.
+        /// </summary>
+        /// <param name="destinationStream">The destination file stream.</param>
+        /// <param name="sourceBuffer">The source chunk data.</param>
+        /// <param name="verificationBuffer">The buffer used to read the destination chunk.</param>
+        /// <param name="bytesRead">The number of valid bytes in the chunk.</param>
+        /// <param name="offset">The chunk position in the destination file.</param>
+        /// <param name="sourceChunkHash">The expected MD5 hash.</param>
+        /// <param name="hashCalculator">The calculator used to hash the chunk.</param>
+        /// <exception cref="InvalidDataException">
+        /// Thrown when the chunk cannot be verified after all attempts.
+        /// </exception>
+        /// <exception cref="EndOfStreamException">
+        /// Thrown when the destination ends before the chunk is fully read.
+        /// </exception>
+        private void RetryChunk(
+        FileStream destinationStream,
+        byte[] sourceBuffer,
+        byte[] verificationBuffer,
+        int bytesRead,
+        long offset,
+        string sourceChunkHash,
+        FileHashCalculator hashCalculator)
+        {
+            for (int attempt = 0;
+                 attempt <= _transferOptions.MaxRetries;
+                 attempt++)
+            {
+                destinationStream.Seek(
+                    offset,
+                    SeekOrigin.Begin);
+
+                destinationStream.Write(
+                    sourceBuffer,
+                    0,
+                    bytesRead);
+
+                destinationStream.Flush();
+
+                destinationStream.Seek(
+                    offset,
+                    SeekOrigin.Begin);
+
+                int totalBytesRead = 0;
+                bool chunkReadCompletely = true;
+
+                while (totalBytesRead < bytesRead)
+                {
+                    int readCount = destinationStream.Read(
+                        verificationBuffer,
+                        totalBytesRead,
+                        bytesRead - totalBytesRead);
+
+                    if (readCount == 0)
+                    {
+                        chunkReadCompletely = false;
+                        break;
+                    }
+
+                    totalBytesRead += readCount;
+                }
+
+                if (!chunkReadCompletely)
+                {
+                    continue;
+                }
+
+                string destinationChunkHash =
+                    hashCalculator.ComputeChunkMd5(
+                        verificationBuffer,
+                        bytesRead);
+
+                if (string.Equals(
+                        sourceChunkHash,
+                        destinationChunkHash,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
+            throw new InvalidDataException(
+                $"Chunk verification failed at offset {offset} after " +
+                $"{_transferOptions.MaxRetries + 1} attempts.");
+        }
+
         /// <summary>
         /// Validates that the input strings for the file destination and source are not null or empty.
         /// </summary>
@@ -153,7 +240,7 @@
         /// <exception cref="ArgumentNullException"></exception>
         private void ValidateInputParameters(string sourcePath, string destinationFileDirectory)
         {
-            if(string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException(nameof(sourcePath));
+            if (string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException(nameof(sourcePath));
 
             if (string.IsNullOrWhiteSpace(destinationFileDirectory)) throw new ArgumentNullException(nameof(destinationFileDirectory));
 
@@ -199,7 +286,7 @@
         /// </summary>
         /// <param name="destinationFileDirectory"></param>
         private void ValidateDestinationDirectoryExists(string destinationFileDirectory)
-        { 
+        {
             if (!Directory.Exists(destinationFileDirectory))
             {
                 Directory.CreateDirectory(destinationFileDirectory);
