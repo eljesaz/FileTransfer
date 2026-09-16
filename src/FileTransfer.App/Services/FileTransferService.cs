@@ -29,10 +29,10 @@
         /// </summary>
         /// <param name="sourcePath">The path of the source file.</param>
         /// <param name="destinationFileDirectory">The destination file directory.</param>
-        public void Transfer(string sourcePath, string destinationFileDirectory)
+        public TransferResult Transfer(string sourcePath, string destinationFileDirectory)
         {
             ValidateInputParameters(sourcePath, destinationFileDirectory);
-            ProcessTransfer(sourcePath, destinationFileDirectory);
+            return ProcessTransfer(sourcePath, destinationFileDirectory);
         }
 
         /// <summary>
