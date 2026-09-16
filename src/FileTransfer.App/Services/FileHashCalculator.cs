@@ -1,6 +1,7 @@
 ﻿namespace FileTransfer.App.Services
 {
     using System.Security.Cryptography;
+    using System.Text;
 
     /// <summary>
     /// Creates hashes from file chunks and whole files sequentialy.
@@ -32,7 +33,36 @@
         
         public string ComputeFileSha256(string filePath)
         {
-            return String.Empty;
+
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                throw new ArgumentException(
+                    "A file path is required.",
+                    filePath);
+            }
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException(
+                    "The file was not found.",
+                    filePath);
+            }
+            byte[] hashBytes;
+
+            using (FileStream stream = File.OpenRead(filePath))
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                hashBytes = sha256Hash.ComputeHash(stream);
+            }
+
+            StringBuilder hashBuilder = new(hashBytes.Length * 2);
+
+            foreach (byte hashByte in hashBytes)
+            {
+                hashBuilder.Append(hashByte.ToString("x2"));
+            }
+
+            return hashBuilder.ToString();
         }
     }
 
