@@ -32,6 +32,35 @@
         public void Transfer(string sourcePath, string destinationFileDirectory)
         {
             ValidateInputParameters(sourcePath, destinationFileDirectory);
+            ProcessTransfer(sourcePath, destinationFileDirectory);
+        }
+
+        /// <summary>
+        /// Processes the file transfer from source file path to destination.
+        /// </summary>
+        /// <param name="sourcePath"></param>
+        /// <param name="destinationFileDirectory"></param>
+        private void ProcessTransfer(string sourcePath, string destinationFileDirectory)
+        {
+            var destinationFilePath = Path.Combine(destinationFileDirectory, Path.GetFileName(sourcePath));
+
+            using FileStream sourceStream = File.OpenRead(sourcePath);
+            using FileStream destinationStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.ReadWrite);
+
+            byte[] buffer = new byte[_transferOptions.ChunkSizeBytes];
+
+            int bytesRead;
+
+            while ((bytesRead = sourceStream.Read(
+                buffer,
+                0,
+                buffer.Length)) > 0)
+            {
+                destinationStream.Write(
+                    buffer,
+                    0,
+                    bytesRead);
+            }
         }
 
         #region "Private validation methods"        
