@@ -40,28 +40,62 @@
         /// </summary>
         /// <param name="sourcePath"></param>
         /// <param name="destinationFileDirectory"></param>
-        private void ProcessTransfer(string sourcePath, string destinationFileDirectory)
-        {
-            var destinationFilePath = Path.Combine(destinationFileDirectory, Path.GetFileName(sourcePath));
-
-            using FileStream sourceStream = File.OpenRead(sourcePath);
-            using FileStream destinationStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.ReadWrite);
-
-            byte[] buffer = new byte[_transferOptions.ChunkSizeBytes];
-
-            int bytesRead;
-
-            while ((bytesRead = sourceStream.Read(
-                buffer,
-                0,
-                buffer.Length)) > 0)
+        private TransferResult ProcessTransfer(
+        string sourcePath,
+        string destinationFileDirectory)
             {
-                destinationStream.Write(
-                    buffer,
-                    0,
-                    bytesRead);
+                string destinationFilePath = Path.Combine(
+                    destinationFileDirectory,
+                    Path.GetFileName(sourcePath));
+
+                List<FileChunk> chunks = new List<FileChunk>();
+                FileHashCalculator hashCalculator = new FileHashCalculator();
+                long offset = 0;
+
+                using (FileStream sourceStream = File.OpenRead(sourcePath))
+                using (FileStream destinationStream = new FileStream(
+                    destinationFilePath,
+                    FileMode.Create,
+                    FileAccess.ReadWrite))
+                {
+                    byte[] buffer = new byte[_transferOptions.ChunkSizeBytes];
+                    int bytesRead;
+
+                    while ((bytesRead = sourceStream.Read(
+                        buffer,
+                        0,
+                        buffer.Length)) > 0)
+                    {
+                        destinationStream.Write(
+                            buffer,
+                            0,
+                            bytesRead);
+
+                        string md5HashedChunk =
+                            hashCalculator.ComputeChunkMd5(
+                                buffer,
+                                bytesRead);
+
+                        chunks.Add(new FileChunk(
+                            offset,
+                            bytesRead,
+                            md5HashedChunk));
+
+                        offset += bytesRead;
+                    }
+                }
+
+                string hashedSource =
+                    hashCalculator.ComputeFileSha256(sourcePath);
+
+                string hashedDestination =
+                    hashCalculator.ComputeFileSha256(destinationFilePath);
+
+                return new TransferResult(
+                    chunks,
+                    hashedSource,
+                    hashedDestination);
             }
-        }
 
         #region "Private validation methods"        
         /// <summary>
