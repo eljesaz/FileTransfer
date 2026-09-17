@@ -17,6 +17,20 @@ FileTransferService transferService =
 
 try
 {
+    string fullDestinationDirectory =
+    Path.GetFullPath(destinationDirectory);
+
+    string destinationFilePath = Path.Combine(
+        fullDestinationDirectory,
+        Path.GetFileName(sourcePath));
+
+    if (!Directory.Exists(fullDestinationDirectory))
+    {
+        Console.WriteLine(
+            $"Destination directory will be created at: " +
+            $"{fullDestinationDirectory}");
+    }
+
     Progress<double> progress = new(
     percentage => Console.Write(
         $"\rProgress: {percentage:0.00}%"));
@@ -28,16 +42,23 @@ try
     Console.WriteLine();
     Console.WriteLine("Transfer completed successfully.");
 
-
-    Console.WriteLine("Chunk checksums:");
-
-    foreach (FileChunk chunk in result.Chunks)
+    if(result.Chunks.Count == 0) 
     {
-        Console.WriteLine(
-            $"Offset: {chunk.Offset}, " +
-            $"Length: {chunk.Length}, " +
-            $"MD5: {chunk.Md5Hash}");
+        Console.WriteLine("File is empty, no chunks were created during transfer.");
     }
+    else
+    {
+        Console.WriteLine("Chunk checksums:");
+
+        foreach (FileChunk chunk in result.Chunks)
+        {
+            Console.WriteLine(
+                $"Offset: {chunk.Offset}, " +
+                $"Length: {chunk.Length}, " +
+                $"MD5: {chunk.Md5Hash}");
+        }
+    }
+   
 
     Console.WriteLine();
     Console.WriteLine($"Source SHA-256:      {result.SourceSha256}");
@@ -59,5 +80,9 @@ catch (InvalidDataException exception)
 catch (IOException exception)
 {
     Console.WriteLine($"I/O error: {exception.Message}");
+}
+catch(Exception exception)
+{
+    Console.WriteLine($"Something went wrong: {exception.Message}");
 }
 
