@@ -1,4 +1,6 @@
-﻿using FileTransfer.App.Domain;
+﻿using System.Runtime.CompilerServices;
+
+using FileTransfer.App.Domain;
 using FileTransfer.App.Services; 
 
 Console.Write("Enter the source file path: ");
@@ -11,16 +13,21 @@ TransferOptions options = new(
     chunkSizeBytes: 4 * 1024 * 1024,
     maxRetries: 3);
 
+
 FileTransferService transferService =
     new(options);
 
 try
 {
+    Progress<double> progress = new(
+    percentage => Console.Write(
+        $"\rProgress: {percentage:0.00}%"));
+
     TransferResult result =
         transferService.Transfer(
             sourcePath,
-            destinationDirectory);
-
+            destinationDirectory, progress);
+    Console.WriteLine();
     Console.WriteLine("Transfer completed successfully.");
 }
 catch (ArgumentException exception)
@@ -39,3 +46,4 @@ catch (IOException exception)
 {
     Console.WriteLine($"I/O error: {exception.Message}");
 }
+

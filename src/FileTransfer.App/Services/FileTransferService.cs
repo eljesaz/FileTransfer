@@ -29,10 +29,14 @@
         /// </summary>
         /// <param name="sourcePath">The path of the source file.</param>
         /// <param name="destinationFileDirectory">The destination file directory.</param>
-        public TransferResult Transfer(string sourcePath, string destinationFileDirectory)
+        /// <param name="progress">The progress of file transport.</param>
+        public TransferResult Transfer(string sourcePath, string destinationFileDirectory, IProgress<double>? progress = null)
         {
+            sourcePath = RemoveQuotes(sourcePath);
+            destinationFileDirectory = RemoveQuotes(
+                destinationFileDirectory);
             ValidateInputParameters(sourcePath, destinationFileDirectory);
-            return ProcessTransfer(sourcePath, destinationFileDirectory);
+            return ProcessTransfer(sourcePath, destinationFileDirectory, progress);
         }
 
         /// <summary>
@@ -40,9 +44,8 @@
         /// </summary>
         /// <param name="sourcePath"></param>
         /// <param name="destinationFileDirectory"></param>
-        private TransferResult ProcessTransfer(
-        string sourcePath,
-        string destinationFileDirectory)
+        /// <param name="progress"></param>
+        private TransferResult ProcessTransfer(string sourcePath, string destinationFileDirectory, IProgress<double>? progress = null)
         {
             string destinationFilePath = Path.Combine(
                 destinationFileDirectory,
@@ -65,7 +68,7 @@
                     new byte[_transferOptions.ChunkSizeBytes];
 
                 int bytesRead;
-
+                long totalBytes = sourceStream.Length;
                 while ((bytesRead = sourceStream.Read(
                     sourceBuffer,
                     0,
@@ -124,6 +127,10 @@
                         sourceChunkHash));
 
                     offset += bytesRead;
+
+                    double percentage = totalBytes == 0 ? 100 : (double)offset / totalBytes * 100;
+
+                    progress?.Report(percentage);
 
                     destinationStream.Seek(
                         offset,
@@ -291,6 +298,16 @@
             {
                 Directory.CreateDirectory(destinationFileDirectory);
             }
+        }
+
+        /// <summary>
+        /// Removes leading and trailing quotation marks from a string.
+        /// </summary>
+        /// <param name="input">The input string.</param>
+        /// <returns></returns>
+        private string RemoveQuotes(string input)
+        {
+            return input.Trim().Trim('"');
         }
         #endregion
     }
