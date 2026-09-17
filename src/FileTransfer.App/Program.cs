@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-using FileTransfer.App.Domain;
+﻿using FileTransfer.App.Domain;
 using FileTransfer.App.Services; 
 
 Console.Write("Enter the source file path: ");
@@ -29,6 +27,22 @@ try
             destinationDirectory, progress);
     Console.WriteLine();
     Console.WriteLine("Transfer completed successfully.");
+
+
+    Console.WriteLine("Chunk checksums:");
+
+    foreach (FileChunk chunk in result.Chunks)
+    {
+        Console.WriteLine(
+            $"Offset: {chunk.Offset}, " +
+            $"Length: {chunk.Length}, " +
+            $"MD5: {chunk.Md5Hash}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Source SHA-256:      {result.SourceSha256}");
+    Console.WriteLine($"Destination SHA-256: {result.DestinationSha256}");
+    Console.WriteLine($"Hashes match:        {result.HashesMatch}");
 }
 catch (ArgumentException exception)
 {
