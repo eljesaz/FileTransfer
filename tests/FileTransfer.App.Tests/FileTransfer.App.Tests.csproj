@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\FileTransfer.App\FileTransfer.App.csproj" />
+    <ProjectReference Include="..\..\src\FileTransfer.App\FileTransfer.App.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.14.37614.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileTransfer.App", "src\FileTransfer.App\FileTransfer.App.csproj", "{3DB45ADD-9584-CAC5-BFF8-E3FEB423E235}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileTransfer.App.Tests", "FileTransfer.App.Tests\FileTransfer.App.Tests.csproj", "{A74E3834-0E2E-4A61-95B9-2F50213A2EB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileTransfer.App.Tests", "tests\FileTransfer.App.Tests\FileTransfer.App.Tests.csproj", "{4119D11D-8E22-86AD-3864-1CC4C3D05166}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{3DB45ADD-9584-CAC5-BFF8-E3FEB423E235}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DB45ADD-9584-CAC5-BFF8-E3FEB423E235}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DB45ADD-9584-CAC5-BFF8-E3FEB423E235}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A74E3834-0E2E-4A61-95B9-2F50213A2EB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A74E3834-0E2E-4A61-95B9-2F50213A2EB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A74E3834-0E2E-4A61-95B9-2F50213A2EB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A74E3834-0E2E-4A61-95B9-2F50213A2EB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4119D11D-8E22-86AD-3864-1CC4C3D05166}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4119D11D-8E22-86AD-3864-1CC4C3D05166}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4119D11D-8E22-86AD-3864-1CC4C3D05166}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4119D11D-8E22-86AD-3864-1CC4C3D05166}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
